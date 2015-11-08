@@ -16,12 +16,14 @@ import com.loopj.android.http.RequestParams;
 import org.apache.http.Header;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private Button btn_start;
     private Button btn_download;
     private ProgressBar pb_main;
+    private Button btn_upload;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,9 +31,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_main);
         btn_start = (Button) findViewById(R.id.btn_start);
         btn_download = (Button) findViewById(R.id.btn_download);
+        btn_upload = (Button) findViewById(R.id.btn_upload);
         pb_main = (ProgressBar) findViewById(R.id.pb_main);
         btn_start.setOnClickListener(this);
         btn_download.setOnClickListener(this);
+        btn_upload.setOnClickListener(this);
+        Log.d("TEST", String.valueOf(Environment.getExternalStorageDirectory()));
+
     }
 
     @Override
@@ -43,7 +49,46 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.btn_download:
                 download();
                 break;
+            case R.id.btn_upload:
+                upLoad();
+                break;
         }
+    }
+
+    private void upLoad() {
+        RequestParams requestParams = new RequestParams();
+        File file = new File(Environment.getExternalStorageDirectory() + "/Download/test.avi");
+        try {
+            requestParams.put("file", file);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        Client.post(this, "http://192.168.1.112:8080/Server/servlet/File", requestParams, new AsyncHttpResponseHandler() {
+            public boolean notFirst = true;
+
+
+            @Override
+            public void onProgress(long bytesWritten, long totalSize) {
+                super.onProgress(bytesWritten, totalSize);
+                if (notFirst) {
+                    pb_main.setMax((int) totalSize);
+                    Log.d("onStart()", "File Size = " + totalSize);
+                    notFirst = !notFirst;
+                }
+                pb_main.setProgress((int) bytesWritten);
+            }
+
+            @Override
+            public void onSuccess(int i, Header[] headers, byte[] bytes) {
+                if (i == 200)
+                    Toast.makeText(MainActivity.this, "上传成功!", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onFailure(int i, Header[] headers, byte[] bytes, Throwable throwable) {
+
+            }
+        });
     }
 
     private void download() {
@@ -104,7 +149,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void opHttp() {
         RequestParams requestParams = new RequestParams();
         requestParams.add("id", "2015");
-        Client.get("http://192.168.1.112:8080/Test/servlet/Test", requestParams, new AsyncHttpResponseHandler() {
+        Client.get("http://192.168.1.112:8080/", requestParams, new AsyncHttpResponseHandler() {
             @Override
             public void onSuccess(int i, Header[] headers, byte[] bytes) {
                 Toast.makeText(MainActivity.this, "访问成功!", Toast.LENGTH_SHORT).show();
@@ -112,9 +157,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 for (Header header : headers) {
                     Log.d("MAIN", header.toString());
                 }
-                for (byte b : bytes) {
-                    Log.d("MAIN", String.valueOf(b));
-                }
+                    Log.d("MAIN", new String(bytes));
             }
 
             @Override
